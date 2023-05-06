@@ -42,8 +42,8 @@ gstacks \
 
 # Use Stacks populations to make unfiltered VCF file
 populations \
--P /path/to/gstacks-output/island-2-9-10 \
--O /path/to/populations-output/island-2-9-10/nofilter \
+-P /path/to/gstacks-output/island-2-7-9-10-11 \
+-O /path/to/populations-output/island-2-7-9-10-11 \
 -M /path/to/popfiles/pops_island-2-7-9-10-11.txt \
 -t 8 \
 --vcf
