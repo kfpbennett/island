@@ -1,0 +1,49 @@
+# Code to process raw reads into an unfiletered VCF file
+# Starting files are in /path/to/raw_reads/lane1, /path/to/raw_reads/lane2, and /path/to/raw_reads/lane3, where samples
+# in lanes 1 and 2 were the same, pooled across both lanes, and samples in lane 3 were unique to that lane.
+
+# Example code to process a lane, all done identically
+process_radtags \
+-1 /path/to/raw_reads/lane1/island_manakin_CKDL220026672-1A_HHTCKCCX2_L4_R1.fq.gz \
+-2 /path/to/raw_reads/lane1/island_manakin_CKDL220026672-1A_HHTCKCCX2_L4_R2.fq.gz \
+-o /path/to/proc_reads/lane1 \
+-b /path/to/barcodes/island_rad_barcodes.txt \
+--paired \
+--clean \
+--quality \
+--rescue \
+--renz-1 sbfI \
+-i gzfastq \
+--adapter_1 GATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCAGAACAA \
+--adapter_2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT \
+--adapter_mm 2 \
+--threads 8
+
+# Code to align processed reads to the Mvit reference. This is written into a jobfile titled align_lane1.job (for instance)
+bwa mem \
+-t 4 \
+/path/to/genome/GCF_001715985.3_ASM171598v3_genomic.fna \
+/path/to/proc_reads/lane1/$1.1.fq.gz \
+/path/to/proc_reads/lane1/$1.2.fq.gz | \
+samtools view -b -h | \
+samtools sort -@ 4 \
+-o /path/to/aligned_reads/lane1/$1.bam 
+
+# The above is submitted using the following
+for x in *.1.fq*; do x=${x%.1*}; qsub -N align_${x} -o align_${x}.log align_lane1.job ${x}; done
+
+# Use gstacks to assemble RAD loci
+gstacks \
+-t 4 \
+--rm-pcr-duplicates \
+-I /path/to/aligned_reads/merged \
+-M /path/to/popfile/pops_island-2-7-9-10-11.txt \
+-O /path/to/gstacks-output/island-2-7-9-10-11
+
+# Use Stacks populations to make unfiltered VCF file
+populations \
+-P /path/to/gstacks-output/island-2-9-10 \
+-O /path/to/populations-output/island-2-9-10/nofilter \
+-M /path/to/popfiles/pops_island-2-7-9-10-11.txt \
+-t 8 \
+--vcf
