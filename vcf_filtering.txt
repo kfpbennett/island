@@ -1,0 +1,54 @@
+# Start with unfiltered VCF, filter for SNPs only, biallelic sites, GQ less than 40, mac >= 2,
+# and set to uncalled sites with genotype depth (DP) below 4 or above 80, then filter out sites
+# missing in more than 25% of individuals
+
+vcftools \
+--vcf /path/to/vcf/populations.snps.vcf \
+--remove-indels \
+--minGQ 40 \
+--minDP 4 \
+--maxDP 80 \
+--min-alleles 2 \
+--max-alleles 2 \
+--mac 2 \
+--max-missing 0.25 \
+--recode \
+--out /path/to/filteredvcfs/filter1
+
+# List individual missingness
+vcftools --vcf filter1.recode.vcf --missing-indv --out filter2
+
+# Filter out individuals missing more than 90% of all sites
+awk '$5 > 0.9 {print $1}' filter2.imiss > imiss_90.txt
+vcftools \
+--vcf filter1.recode.vcf \
+--remove imiss_90.txt \
+--recode \
+--out filter2
+
+# Filter out sites still missing from more than 95% of individuals
+vcftools \
+--vcf filter2.recode.vcf \
+--max-missing 0.95 \
+--recode \
+--out filter3
+
+List individual missingness
+vcftools --vcf filter3.recode.vcf --missing-indv --out filter4
+
+# Filter out individuals missing more than 10% of all sites
+awk '$5 > 0.1 {print $1}' filter4.imiss > imiss_10.txt
+vcftools \
+--vcf filter3.recode.vcf \
+--remove imiss_10.txt \
+--recode \
+--out filter4
+
+# Finally, thin so sites are not within 5 kb of each other
+vcftools \
+--vcf filter4.recode.vcf \
+--thin 5000 \
+--recode \
+--out filter4_thin5k
+
+# The final filtered VCF file is filter4.thin5k.recode.vcf
